@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>OnlineBN</title>
+<style>
+:root { --bg: #f7f8f5; --card: #fff; --ink: #1f2522; --muted: #5b6661; --line: #d4dad6; --accent: #2f5f99; --bad: #9b1c1c; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg: #161a18; --card: #1f2522; --ink: #eef2ef; --muted: #a9b3ae; --line: #36403b; --accent: #8fb3e0; --bad: #f19a9a; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 24px; }
+main { width: min(440px, 100%); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+h1 { margin: 0 0 4px; font-size: 26px; } p { margin: 8px 0; } .muted { color: var(--muted); font-size: 14px; }
+label { display: grid; gap: 6px; margin: 16px 0 12px; font-weight: 600; }
+input { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; cursor: pointer; width: 100%; }
+@media (prefers-color-scheme: dark) { button { color: #10161f; } }
+button:disabled { opacity: 0.6; cursor: progress; } .small { font-size: 13px; margin-top: -6px; }
+.error { color: var(--bad); font-weight: 600; } details { margin-top: 16px; } summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+pre { white-space: pre-wrap; font: 13px/1.5 system-ui, sans-serif; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>OnlineBN</h1>
+  <div id="ok">
+    <p class="muted">This site is private. Sign in with your email and the password you were given.</p>
+    <form id="f">
+      <label>Email <input id="em" type="email" autocomplete="username" autofocus></label>
+      <label>Password <input id="pw" type="password" autocomplete="current-password" required></label>
+      <p class="muted small">Given only a password? Leave the email empty.</p>
+      <button id="go" type="submit">Unlock</button>
+      <p id="msg" role="status" aria-live="polite" class="muted"></p>
+    </form>
+  </div>
+  <p id="denied" class="error" hidden>This copy of OnlineBN is not authorised. Please use the official site.</p>
+  <details><summary>Licence</summary><pre>OnlineBN
+Copyright (c) 2026 Md Samiullah. All rights reserved.
+
+OnlineBN may be used only through its official sites, by people given access by the copyright holder.
+Copying, saving, rehosting, redistributing, modifying or reverse-engineering the software, in whole or in part,
+is not permitted without the copyright holder's written permission.
+
+Networks, projects and other content you create with OnlineBN remain yours.
+
+The software is provided "as is", without warranty of any kind. The copyright holder is not liable for any claim,
+damages or other liability arising from its use.
+
+To ask for permission: contact the copyright holder through the official site.
+</pre></details>
+</main>
+<script>
+(() => {
+  const BASE = "/onlinebn/", CACHE = "OnlineBN-site", HOSTS = ["mdsamiullah.github.io"];
+  const $ = (id) => document.getElementById(id);
+  // Only on the official sites (a copy elsewhere does nothing).
+  if (!HOSTS.includes(location.hostname)) { $('ok').hidden = true; $('denied').hidden = false; return; }
+  if (!('serviceWorker' in navigator) || !window.caches || !crypto.subtle) {
+    $('msg').textContent = 'This browser cannot open OnlineBN: please use a current version of Chrome, Edge, Firefox or Safari.'; $('go').disabled = true; return;
+  }
+  const ready = navigator.serviceWorker.register(BASE + 'sw.js', { scope: BASE }).then(() => navigator.serviceWorker.ready);
+  const un = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const say = (t, bad) => { $('msg').textContent = t; $('msg').className = bad ? 'error' : 'muted'; };
+  const TYPES = { html: 'text/html', js: 'text/javascript', mjs: 'text/javascript', css: 'text/css', json: 'application/json', svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', ico: 'image/x-icon', md: 'text/markdown', txt: 'text/plain', wasm: 'application/wasm', woff2: 'font/woff2' };
+  $('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('go').disabled = true;
+    say('Unlocking… this takes a few seconds, on purpose (it makes guessing passwords slow).');
+    try {
+      const u = await (await globalThis.fetch(BASE + 'unlock.json', { cache: 'no-store' })).json();
+      const password = $('pw').value.normalize('NFKC');
+      const email = $('em').value.trim().toLowerCase();
+      const pwKey = async (salt, iterations) => crypto.subtle.deriveKey({ name: 'PBKDF2', salt: un(salt), iterations, hash: 'SHA-256' }, await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+      const openWith = async (key, s) => crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(s.iv) }, key, un(s.data));
+      let raw = null, identity = null;
+      if (email) {
+        // A person: their entry is found by a hash of their email; the password opens their personal key.
+        const lookup = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(u.tool + ':' + email))), (x) => x.toString(16).padStart(2, '0')).join('').slice(0, 32);
+        const en = u.entries.find((x) => x.kind === 'person' && x.lookup === lookup);
+        if (en) {
+          try {
+            const personKey = await openWith(await pwKey(en.salt, en.iterations), en.locked);
+            raw = await openWith(await crypto.subtle.importKey('raw', personKey, 'AES-GCM', false, ['decrypt']), en.site);
+            identity = { tool: u.tool, id: en.id, email, personKey: btoa(String.fromCharCode(...new Uint8Array(personKey))) };
+          } catch (_) { raw = null; }
+        }
+      } else {
+        // A password from before people existed (milestone 1).
+        const kek = await pwKey(u.salt, u.iterations);
+        for (const en of u.entries.filter((x) => x.kind !== 'person')) { try { raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(en.iv) }, kek, un(en.key)); break; } catch (_) { /* not this one */ } }
+      }
+      if (!raw) { say(email ? 'That email and password do not match. Check them and try again.' : 'That password is not right. Check it and try again.', true); $('go').disabled = false; $('pw').select(); return; }
+      say('Opening OnlineBN…');
+      const master = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+      const sealed = await (await globalThis.fetch(BASE + 'site.enc', { cache: 'no-store' })).arrayBuffer();
+      const zipped = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(u.siteIv) }, master, sealed);
+      const text = await new Response(new Blob([zipped]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+      const bundle = JSON.parse(text);
+      await caches.delete(CACHE);
+      const cache = await caches.open(CACHE);
+      for (const [path, data] of Object.entries(bundle.files)) {
+        const ext = (path.split('.').pop() || '').toLowerCase();
+        await cache.put(new Request(BASE + path), new Response(un(data), { headers: { 'content-type': TYPES[ext] || 'application/octet-stream' } }));
+      }
+      // Who is signed in on this device (for the gatekeeper); forgotten by Lock this device.
+      if (identity) await cache.put(new Request(BASE + '__identity'), new Response(JSON.stringify(identity), { headers: { 'content-type': 'application/json' } }));
+      await cache.put(new Request(BASE + '__version'), new Response(u.version));
+      await ready;
+      location.replace(location.href);
+    } catch (err) {
+      say('It could not be opened: ' + (err && err.message ? err.message : err) + '. Please try again.', true);
+      $('go').disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
