@@ -20,12 +20,23 @@ button { font: inherit; font-weight: 600; padding: 10px 16px; border-radius: 8px
 button:disabled { opacity: 0.6; cursor: progress; } .small { font-size: 13px; margin-top: -6px; }
 .error { color: var(--bad); font-weight: 600; } details { margin-top: 16px; } summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 pre { white-space: pre-wrap; font: 13px/1.5 system-ui, sans-serif; color: var(--muted); }
+[role=tablist] { display: flex; gap: 4px; margin: 14px 0 4px; border-bottom: 1px solid var(--line); }
+[role=tab] { width: auto; background: none; color: var(--muted); border-radius: 8px 8px 0 0; padding: 8px 14px; }
+[role=tab][aria-selected=true] { color: var(--ink); background: var(--bg); box-shadow: inset 0 -3px 0 var(--accent); }
+textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); min-height: 60px; }
+.ok { color: #1d6b3a; font-weight: 600; } .alt { background: none; color: var(--accent); border: 1px solid var(--accent); margin-top: 10px; }
 </style>
 </head>
 <body>
 <main>
   <h1>OnlineBN</h1>
   <div id="ok">
+    <div role="tablist" aria-label="How to open OnlineBN" id="tabs" hidden>
+      <button role="tab" id="t-in" aria-selected="true" aria-controls="p-in">Sign in</button>
+      <button role="tab" id="t-up" aria-selected="false" aria-controls="p-up" hidden>Sign up</button>
+      <button role="tab" id="t-guest" aria-selected="false" aria-controls="p-guest" hidden>Guest</button>
+    </div>
+    <div id="p-in" role="tabpanel" aria-labelledby="t-in">
     <p class="muted">This site is private. Sign in with your email and the password you were given.</p>
     <form id="f">
       <label>Email <input id="em" type="email" autocomplete="username" autofocus></label>
@@ -34,6 +45,29 @@ pre { white-space: pre-wrap; font: 13px/1.5 system-ui, sans-serif; color: var(--
       <button id="go" type="submit">Unlock</button>
       <p id="msg" role="status" aria-live="polite" class="muted"></p>
     </form>
+    </div>
+    <div id="p-up" role="tabpanel" aria-labelledby="t-up" hidden>
+      <p class="muted">Ask for an account. An administrator approves it (or it is approved automatically); after that, and once the site is next published, sign in here with your email and the password you choose now.</p>
+      <form id="su">
+        <label>Your name <input id="su-name" autocomplete="name" required maxlength="100"></label>
+        <label>Email <input id="su-em" type="email" autocomplete="email" required></label>
+        <label>Choose a password (at least 12 characters) <input id="su-pw" type="password" autocomplete="new-password" required minlength="12"></label>
+        <label>The same password again <input id="su-pw2" type="password" autocomplete="new-password" required></label>
+        <label>Why you would like access (optional) <textarea id="su-why" maxlength="500"></textarea></label>
+        <div id="su-check"></div>
+        <button id="su-go" type="submit">Ask for an account</button>
+        <p id="su-msg" role="status" aria-live="polite" class="muted"></p>
+      </form>
+    </div>
+    <div id="p-guest" role="tabpanel" aria-labelledby="t-guest" hidden>
+      <p class="muted">As a guest you can build and solve networks here; your work stays in this browser and in files. Online projects, sharing and an account need you to sign up.</p>
+      <form id="gc" hidden>
+        <label>Guest code <input id="gc-code" autocomplete="off" required></label>
+        <button id="gc-go" type="submit">Open as a guest</button>
+      </form>
+      <button id="go-open" class="alt" type="button" hidden>Continue as a guest</button>
+      <p id="g-msg" role="status" aria-live="polite" class="muted"></p>
+    </div>
   </div>
   <p id="denied" class="error" hidden>This copy of OnlineBN is not authorised. Please use the official site.</p>
   <details><summary>Licence</summary><pre>OnlineBN
@@ -51,6 +85,8 @@ damages or other liability arising from its use.
 To ask for permission: contact the copyright holder through the official site.
 </pre></details>
 </main>
+<script>(()=>{var p=new TextEncoder,x=new TextDecoder,o=e=>{let t="";for(let r of e)t+=String.fromCharCode(r);return btoa(t)},w=e=>Uint8Array.from(atob(e),t=>t.charCodeAt(0)),s=e=>crypto.getRandomValues(new Uint8Array(e)),y=e=>e;var b=(e,t)=>crypto.subtle.importKey("raw",y(e),"AES-GCM",!1,t);async function l(e,t){let r=s(12);return{iv:o(r),data:o(new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:y(r)},e,y(t))))}}var g=async(e,t)=>l(await b(e,["encrypt"]),t);async function K(e,t,r=6e5){let n=await crypto.subtle.importKey("raw",p.encode(e.normalize("NFKC")),"PBKDF2",!1,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:y(w(t)),iterations:r,hash:"SHA-256"},n,{name:"AES-GCM",length:256},!1,["encrypt","decrypt"])}var m=e=>e.trim().toLowerCase();var c={name:"ECDH",namedCurve:"P-256"};async function S(e,t,r,n){let a=await crypto.subtle.deriveBits({name:"ECDH",public:t},e,256),i=await crypto.subtle.importKey("raw",a,"HKDF",!1,["deriveKey"]);return crypto.subtle.deriveKey({name:"HKDF",hash:"SHA-256",salt:new Uint8Array(32),info:p.encode(n)},i,{name:"AES-GCM",length:256},!1,r)}async function f(e,t,r="bn-seal"){let n=await crypto.subtle.generateKey(c,!0,["deriveBits"]),a=await crypto.subtle.importKey("jwk",e,c,!1,[]),i=await l(await S(n.privateKey,a,["encrypt"],r),t);return{epk:await crypto.subtle.exportKey("jwk",n.publicKey),...i}}async function u(e){let t=s(32),r=await crypto.subtle.generateKey({name:"ECDSA",namedCurve:"P-256"},!0,["sign","verify"]),n=await crypto.subtle.generateKey(c,!0,["deriveBits"]),a=o(s(16)),i=new Date().toISOString(),d=JSON.stringify({sign:await crypto.subtle.exportKey("jwk",r.privateKey),decrypt:await crypto.subtle.exportKey("jwk",n.privateKey)});return{file:{id:e.id??o(s(9)).replace(/[+/=]/g,"").slice(0,12).toLowerCase(),name:e.name.trim(),email:m(e.email),role:e.role,status:"active",pwSalt:a,iterations:6e5,lockedKey:await l(await K(e.password,a),t),lockedPrivate:await g(t,p.encode(d)),signPub:await crypto.subtle.exportKey("jwk",r.publicKey),encPub:await crypto.subtle.exportKey("jwk",n.publicKey),forPublisher:await f(e.publisherPub,t,"bn-publisher"),created:i,updated:i},personKey:t}}window.__bnNewPerson=u;})();
+</script>
 <script>
 (() => {
   const BASE = "/onlinebn/", CACHE = "OnlineBN-site", HOSTS = ["mdsamiullah.github.io"];
@@ -64,12 +100,101 @@ To ask for permission: contact the copyright holder through the official site.
   const un = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   const say = (t, bad) => { $('msg').textContent = t; $('msg').className = bad ? 'error' : 'muted'; };
   const TYPES = { html: 'text/html', js: 'text/javascript', mjs: 'text/javascript', css: 'text/css', json: 'application/json', svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', ico: 'image/x-icon', md: 'text/markdown', txt: 'text/plain', wasm: 'application/wasm', woff2: 'font/woff2' };
+  const unlockInfo = globalThis.fetch(BASE + 'unlock.json', { cache: 'no-store' }).then((r) => r.json());
+  /** Opens the site with its key (raw), keeping who opened it (a person, or a guest) for the app. */
+  async function openSite(u, raw, identity, tell) {
+    tell('Opening OnlineBN…');
+    const master = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+    const sealed = await (await globalThis.fetch(BASE + 'site.enc', { cache: 'no-store' })).arrayBuffer();
+    const zipped = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(u.siteIv) }, master, sealed);
+    const text = await new Response(new Blob([zipped]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    const bundle = JSON.parse(text);
+    await caches.delete(CACHE);
+    const cache = await caches.open(CACHE);
+    for (const [path, data] of Object.entries(bundle.files)) {
+      const ext = (path.split('.').pop() || '').toLowerCase();
+      await cache.put(new Request(BASE + path), new Response(un(data), { headers: { 'content-type': TYPES[ext] || 'application/octet-stream' } }));
+    }
+    // Who opened the site on this device (for the gatekeeper, or guest mode); forgotten by Sign out / Lock this device.
+    if (identity) await cache.put(new Request(BASE + '__identity'), new Response(JSON.stringify(identity), { headers: { 'content-type': 'application/json' } }));
+    await cache.put(new Request(BASE + '__version'), new Response(u.version));
+    await ready;
+    location.replace(location.href);
+  }
+  // --- the tabs: Sign up and Guest appear when they are on (asked live, so switching them takes effect at once) ---
+  const tabs = ['in', 'up', 'guest'];
+  const show = (which) => { for (const t of tabs) { $('t-' + t).setAttribute('aria-selected', String(t === which)); $('p-' + t).hidden = t !== which; } };
+  for (const t of tabs) $('t-' + t).addEventListener('click', () => show(t));
+  $('tabs').addEventListener('keydown', (e) => {
+    const on = tabs.filter((t) => !$('t-' + t).hidden); const i = on.findIndex((t) => $('t-' + t).getAttribute('aria-selected') === 'true');
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { const n = on[(i + (e.key === 'ArrowRight' ? 1 : on.length - 1)) % on.length]; show(n); $('t-' + n).focus(); }
+  });
+  unlockInfo.then(async (u) => {
+    let live = { signup: false, codes: false, open: false };
+    if (u.gatekeeper) { try { live = await (await globalThis.fetch(u.gatekeeper + '/v1/' + u.tool + '/guest-settings')).json(); } catch (_) { /* offline: signing in still works */ } }
+    const canSignUp = live.signup && u.gatekeeper && u.publisherPub && window.__bnNewPerson;
+    const hasCodes = live.codes && u.entries.some((x) => x.kind === 'guest');
+    const openEntry = u.entries.find((x) => x.kind === 'open');
+    if (canSignUp) $('t-up').hidden = false;
+    if (hasCodes || openEntry) { $('t-guest').hidden = false; $('gc').hidden = !hasCodes; $('go-open').hidden = !openEntry; }
+    if (canSignUp || hasCodes || openEntry) $('tabs').hidden = false;
+    if (canSignUp && u.turnstile) {
+      const sc = document.createElement('script'); sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'; sc.async = true; document.head.appendChild(sc);
+      $('su-check').innerHTML = '<div class="cf-turnstile" data-sitekey="' + u.turnstile.replace(/[^\w-]/g, '') + '"></div>';
+    }
+  });
+  // --- signing up: the new person's keys are made here, locked with the password they choose ---
+  $('su').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const m = $('su-msg'); const tell = (t, cls) => { m.textContent = t; m.className = cls || 'muted'; };
+    const pw = $('su-pw').value;
+    if (pw.length < 12) return tell('Choose a password of at least 12 characters (a few words in a row are easy to remember).', 'error');
+    if (/^(.)\1+$/.test(pw) || /^(password|123456)/i.test(pw)) return tell('That password is too easy to guess: choose another.', 'error');
+    if (pw !== $('su-pw2').value) return tell('The two passwords are not the same.', 'error');
+    $('su-go').disabled = true; tell('Preparing your account… this takes a few seconds.');
+    try {
+      const u = await unlockInfo;
+      const { file } = await window.__bnNewPerson({ name: $('su-name').value, email: $('su-em').value, role: 'user', password: pw, publisherPub: u.publisherPub });
+      const token = window.turnstile && window.turnstile.getResponse ? window.turnstile.getResponse() : '';
+      const r = await globalThis.fetch(u.gatekeeper + '/v1/' + u.tool + '/signup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ person: file, reason: $('su-why').value, turnstile: token }) });
+      const out = await r.json().catch(() => ({}));
+      if (!r.ok) { tell(out.error || 'It could not be sent. Please try again.', 'error'); $('su-go').disabled = false; if (window.turnstile && window.turnstile.reset) window.turnstile.reset(); return; }
+      $('su').querySelectorAll('input, textarea').forEach((x) => { x.value = ''; });
+      tell(out.status === 'active'
+        ? 'Your account is approved. The site is being published now: in a few minutes, sign in with your email and the password you chose.'
+        : 'Thank you: your request was sent. Once an administrator approves it and the site is next published, sign in with your email and the password you chose.', 'ok');
+    } catch (err) { tell('It could not be sent: ' + (err && err.message ? err.message : err) + '.', 'error'); $('su-go').disabled = false; }
+  });
+  // --- guests: a guest code, or open guest access ---
+  const gsay = (t, bad) => { $('g-msg').textContent = t; $('g-msg').className = bad ? 'error' : 'muted'; };
+  $('gc').addEventListener('submit', async (e) => {
+    e.preventDefault(); $('gc-go').disabled = true; gsay('Unlocking… this takes a few seconds.');
+    try {
+      const u = await unlockInfo;
+      const code = $('gc-code').value.trim().normalize('NFKC');
+      const today = new Date().toISOString().slice(0, 10);
+      for (const en of u.entries.filter((x) => x.kind === 'guest' && x.expires >= today)) {
+        try {
+          const k = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: un(en.salt), iterations: en.iterations, hash: 'SHA-256' }, await crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+          const gk = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(en.locked.iv) }, k, un(en.locked.data));
+          const raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(en.site.iv) }, await crypto.subtle.importKey('raw', gk, 'AES-GCM', false, ['decrypt']), un(en.site.data));
+          return await openSite(u, raw, { tool: u.tool, guest: true, label: en.label, expires: en.expires }, gsay);
+        } catch (_) { /* not this code */ }
+      }
+      gsay('That guest code is not right, or it has expired.', true); $('gc-go').disabled = false;
+    } catch (err) { gsay('It could not be opened: ' + (err && err.message ? err.message : err) + '.', true); $('gc-go').disabled = false; }
+  });
+  $('go-open').addEventListener('click', async () => {
+    $('go-open').disabled = true;
+    try { const u = await unlockInfo; const en = u.entries.find((x) => x.kind === 'open'); await openSite(u, un(en.key), { tool: u.tool, guest: true }, gsay); }
+    catch (err) { gsay('It could not be opened: ' + (err && err.message ? err.message : err) + '.', true); $('go-open').disabled = false; }
+  });
   $('f').addEventListener('submit', async (e) => {
     e.preventDefault();
     $('go').disabled = true;
     say('Unlocking… this takes a few seconds, on purpose (it makes guessing passwords slow).');
     try {
-      const u = await (await globalThis.fetch(BASE + 'unlock.json', { cache: 'no-store' })).json();
+      const u = await unlockInfo;
       const password = $('pw').value.normalize('NFKC');
       const email = $('em').value.trim().toLowerCase();
       const pwKey = async (salt, iterations) => crypto.subtle.deriveKey({ name: 'PBKDF2', salt: un(salt), iterations, hash: 'SHA-256' }, await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
@@ -89,26 +214,10 @@ To ask for permission: contact the copyright holder through the official site.
       } else {
         // A password from before people existed (milestone 1).
         const kek = await pwKey(u.salt, u.iterations);
-        for (const en of u.entries.filter((x) => x.kind !== 'person')) { try { raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(en.iv) }, kek, un(en.key)); break; } catch (_) { /* not this one */ } }
+        for (const en of u.entries.filter((x) => !x.kind || x.kind === 'password')) { try { raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(en.iv) }, kek, un(en.key)); break; } catch (_) { /* not this one */ } }
       }
       if (!raw) { say(email ? 'That email and password do not match. Check them and try again.' : 'That password is not right. Check it and try again.', true); $('go').disabled = false; $('pw').select(); return; }
-      say('Opening OnlineBN…');
-      const master = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
-      const sealed = await (await globalThis.fetch(BASE + 'site.enc', { cache: 'no-store' })).arrayBuffer();
-      const zipped = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: un(u.siteIv) }, master, sealed);
-      const text = await new Response(new Blob([zipped]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-      const bundle = JSON.parse(text);
-      await caches.delete(CACHE);
-      const cache = await caches.open(CACHE);
-      for (const [path, data] of Object.entries(bundle.files)) {
-        const ext = (path.split('.').pop() || '').toLowerCase();
-        await cache.put(new Request(BASE + path), new Response(un(data), { headers: { 'content-type': TYPES[ext] || 'application/octet-stream' } }));
-      }
-      // Who is signed in on this device (for the gatekeeper); forgotten by Lock this device.
-      if (identity) await cache.put(new Request(BASE + '__identity'), new Response(JSON.stringify(identity), { headers: { 'content-type': 'application/json' } }));
-      await cache.put(new Request(BASE + '__version'), new Response(u.version));
-      await ready;
-      location.replace(location.href);
+      await openSite(u, raw, identity, say);
     } catch (err) {
       say('It could not be opened: ' + (err && err.message ? err.message : err) + '. Please try again.', true);
       $('go').disabled = false;
