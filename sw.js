@@ -1,6 +1,6 @@
 // Serves the unlocked OnlineBN from this browser's own storage (Cache Storage); see scripts/protect-site.mjs.
 const BASE = "/onlinebn/", CACHE = "OnlineBN-site";
-const PASS = ['sw.js', 'unlock.json', 'site.enc', 'LICENSE.txt'];
+const PASS = ['sw.js', 'unlock.json', 'site.enc', 'guest.enc', 'LICENSE.txt'];
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => {
