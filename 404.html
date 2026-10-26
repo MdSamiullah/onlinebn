@@ -134,7 +134,8 @@ To ask for permission: contact the copyright holder through the official site.
     if (u.gatekeeper) { try { live = await (await globalThis.fetch(u.gatekeeper + '/v1/' + u.tool + '/guest-settings')).json(); } catch (_) { /* offline: signing in still works */ } }
     const canSignUp = live.signup && u.gatekeeper && u.publisherPub && window.__bnNewPerson;
     const hasCodes = live.codes && u.entries.some((x) => x.kind === 'guest');
-    const openEntry = u.entries.find((x) => x.kind === 'open');
+    // Only while open guest access is on now (Settings), not just when it was on at publishing.
+    const openEntry = live.open ? u.entries.find((x) => x.kind === 'open') : null;
     if (canSignUp) $('t-up').hidden = false;
     if (hasCodes || openEntry) { $('t-guest').hidden = false; $('gc').hidden = !hasCodes; $('go-open').hidden = !openEntry; }
     if (canSignUp || hasCodes || openEntry) $('tabs').hidden = false;
