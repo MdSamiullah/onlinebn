@@ -7,7 +7,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (url.origin !== location.origin || !url.pathname.startsWith(BASE) || e.request.method !== 'GET') return;
   const path = url.pathname.slice(BASE.length);
-  if (PASS.includes(path)) return;
+  if (PASS.includes(path) || path.startsWith('canvas/')) return; // the public guest canvas is served as it is
   e.respondWith(serve(e.request, path));
 });
 async function serve(req, path) {

@@ -25,11 +25,19 @@ pre { white-space: pre-wrap; font: 13px/1.5 system-ui, sans-serif; color: var(--
 [role=tab][aria-selected=true] { color: var(--ink); background: var(--bg); box-shadow: inset 0 -3px 0 var(--accent); }
 textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); min-height: 60px; }
 .ok { color: #1d6b3a; font-weight: 600; } .alt { background: none; color: var(--accent); border: 1px solid var(--accent); margin-top: 10px; }
+/* The public guest canvas: the tool behind the pop-up, dimmed; Continue as guest takes the pop-up away. */
+#canvas { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: var(--bg); }
+#veil { position: fixed; inset: 0; background: rgba(20, 26, 23, 0.4); }
+body.has-canvas main { position: relative; z-index: 1; max-height: calc(100vh - 48px); overflow-y: auto; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3); }
+body.as-guest #veil, body.as-guest main { display: none; }
 </style>
 </head>
 <body>
+<iframe id="canvas" title="OnlineBN" hidden></iframe>
+<div id="veil" hidden></div>
 <main>
   <h1>OnlineBN</h1>
+  <button id="go-canvas" class="alt" type="button" hidden>Continue as guest</button>
   <div id="ok">
     <div role="tablist" aria-label="How to open OnlineBN" id="tabs" hidden>
       <button role="tab" id="t-in" aria-selected="true" aria-controls="p-in">Sign in</button>
@@ -132,6 +140,18 @@ To ask for permission: contact the copyright holder through the official site.
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { const n = on[(i + (e.key === 'ArrowRight' ? 1 : on.length - 1)) % on.length]; show(n); $('t-' + n).focus(); }
   });
   unlockInfo.then(async (u) => {
+    // The public guest canvas: the tool behind this pop-up, which cannot be closed: Sign in, Sign up, a guest code, or
+    // Continue as guest (asked again on every visit; signed-in people and guest codes go straight in on this device).
+    if (u.canvas) {
+      document.body.classList.add('has-canvas');
+      $('canvas').src = BASE + 'canvas/index.html'; $('canvas').hidden = false; $('veil').hidden = false;
+      $('canvas').setAttribute('tabindex', '-1'); $('canvas').setAttribute('aria-hidden', 'true');
+      $('go-canvas').hidden = false;
+      $('go-canvas').addEventListener('click', () => {
+        document.body.classList.add('as-guest');
+        $('canvas').removeAttribute('aria-hidden'); $('canvas').removeAttribute('tabindex'); $('canvas').focus();
+      });
+    }
     let live = { signup: false, codes: false, open: false };
     if (u.gatekeeper) { try { live = await (await globalThis.fetch(u.gatekeeper + '/v1/' + u.tool + '/guest-settings')).json(); } catch (_) { /* offline: signing in still works */ } }
     const canSignUp = live.signup && u.gatekeeper && u.publisherPub && window.__bnNewPerson;
