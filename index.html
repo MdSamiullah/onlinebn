@@ -126,6 +126,8 @@ To ask for permission: contact the copyright holder through the official site.
       await cache.put(new Request(BASE + path), new Response(un(data), { headers: { 'content-type': TYPES[ext] || 'application/octet-stream' } }));
     }
     // Who opened the site on this device (for the gatekeeper, or guest mode); forgotten by Sign out / Lock this device.
+    // A guest code: the tool shows what is not available to guests once it opens.
+    if (identity && identity.guest) { try { sessionStorage.setItem('bn-guest-notice', '1'); } catch (_) { /* private mode */ } }
     if (identity) await cache.put(new Request(BASE + '__identity'), new Response(JSON.stringify(identity), { headers: { 'content-type': 'application/json' } }));
     await cache.put(new Request(BASE + '__version'), new Response(u.version));
     await ready;
@@ -150,6 +152,8 @@ To ask for permission: contact the copyright holder through the official site.
       $('go-canvas').addEventListener('click', () => {
         document.body.classList.add('as-guest');
         $('canvas').removeAttribute('aria-hidden'); $('canvas').removeAttribute('tabindex'); $('canvas').focus();
+        // Every time: the tool shows what is not available to guests.
+        try { $('canvas').contentWindow.postMessage({ type: 'bn-guest-start' }, location.origin); } catch (_) { /* shown from the Guest menu */ }
       });
     }
     let live = { signup: false, codes: false, open: false };
